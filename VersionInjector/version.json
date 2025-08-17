@@ -1,0 +1,9 @@
+{
+	"exeFile": "KOHAN.exe",
+	"CDROMDriveLetter": "E",
+	"fileMappings": [
+		{ "source": "c:\\Files\\files.txt", "target": "./target.txt" },
+	],
+	"Logging": true
+	"logFile": "versionlogfile.txt"
+}
