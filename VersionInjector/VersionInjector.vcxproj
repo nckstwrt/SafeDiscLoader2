@@ -83,6 +83,13 @@
     <ClInclude Include="..\src\Config.h" />
     <ClInclude Include="..\src\tiny-json.h" />
     <ClInclude Include="..\src\Utils.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="VersionInjector.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\SafeDiscLoaderIcon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

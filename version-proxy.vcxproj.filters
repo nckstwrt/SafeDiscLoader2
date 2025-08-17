@@ -71,5 +71,9 @@
     <ClInclude Include="src\Config.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version-proxy.rc" />
   </ItemGroup>
 </Project>
