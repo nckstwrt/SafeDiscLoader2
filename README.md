@@ -23,12 +23,14 @@ You can also use VersionInjector.exe to make SafeDisc utilities work on modern W
 *  Reloaded for their Universal SafeDisc Loader which had great logging to help me reverse engineer what it was doing
 *  SafeDiscCleaner (bOOls eYe, r!sc, etc) nice clean assembly to read for how to patch SafeDisc v2.0 - v2.6
 *  [RibShark](https://twitter.com/RibShark) for his secdrv.sys [SafeDiscShim emulation code](https://github.com/RibShark/SafeDiscShim)
+*  [version-proxy](https://github.com/BitCrackers/version-proxy) from BitCrackers for proxying the Windows version.dll code and approach
+*  [MinHooks](https://github.com/TsudaKageyu/minhook) for API Hooking
 *  SafeDisc 2.7 + 2.8 Loader code written by me
 
 # Background
 [My initial version](https://github.com/nckstwrt/SafeDiscLoader) used Reloaded's SDLoader.dll to bypass SafeDisc. Sadly this was picked up by many virus checkers as being suspicious purely because reloaded's code is so obfuscated. So this version is a fully reverse engineered version of SDLoader.dll and SafeDiscCleaner to support all versions of SafeDisc 2.0 and higher.
 
-# Test Games
+# Tested Games
 * Call of Duty (Original): 3.10.20
 * Call of Duty (Patched - 1.4): 3.15.11 
 * Call of Duty - United Offensive: 3.20.22
