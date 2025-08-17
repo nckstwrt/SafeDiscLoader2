@@ -28,7 +28,7 @@ You can also use VersionInjector.exe to make SafeDisc utilities work on modern W
 # Background
 [My initial version](https://github.com/nckstwrt/SafeDiscLoader) used Reloaded's SDLoader.dll to bypass SafeDisc. Sadly this was picked up by many virus checkers as being suspicious purely because reloaded's code is so obfuscated. So this version is a fully reverse engineered version of SDLoader.dll and SafeDiscCleaner to support all versions of SafeDisc 2.0 and higher.
 
-# Test Games
+# Tested Games
 * Call of Duty (Original): 3.10.20
 * Call of Duty (Patched - 1.4): 3.15.11 
 * Call of Duty - United Offensive: 3.20.22
