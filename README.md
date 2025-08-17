@@ -23,6 +23,7 @@ You can also use VersionInjector.exe to make SafeDisc utilities work on modern W
 *  Reloaded for their Universal SafeDisc Loader which had great logging to help me reverse engineer what it was doing
 *  SafeDiscCleaner (bOOls eYe, r!sc, etc) nice clean assembly to read for how to patch SafeDisc v2.0 - v2.6
 *  [RibShark](https://twitter.com/RibShark) for his secdrv.sys [SafeDiscShim emulation code](https://github.com/RibShark/SafeDiscShim)
+*  [version-proxy](https://github.com/BitCrackers/version-proxy) from BitCrackers for proxying the Windows version.dll code and approach
 *  SafeDisc 2.7 + 2.8 Loader code written by me
 
 # Background
