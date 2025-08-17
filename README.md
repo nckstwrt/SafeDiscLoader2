@@ -1,13 +1,13 @@
-# SafeDiscLoader Version 2
+# SafeDiscLoader2
 Allows playing SafeDisc (version 2.0 to the latest 4.9) protected games on modern Windows. 
 
 # Download
-[Releases](https://github.com/nckstwrt/SafeDiscLoaderV2/releases)
+[Releases](https://github.com/nckstwrt/SafeDiscLoader2/releases)
 
-# Usage (SafeDisc version 3 or higher)
-SafeDiscLoader is primarily "version.dll". For any game using SafeDisc 3 or higher you can just place version.dll in the same directory as the game's main executable and the game will automatically use version.dll without any further changes required to bypass SafeDisc.
+# Usage (For SafeDisc version 3 or higher)
+SafeDiscLoader2 is primarily "version.dll". For any game using SafeDisc 3 or higher you can just place version.dll in the same directory as the game's main executable and the game will automatically use version.dll without any further changes required to bypass SafeDisc.
 
-# Usage (SafeDisc version 2)
+# Usage (For SafeDisc version 2)
 Old games do not automatically load version.dll - so it needs to be injected first using VersionInjector.exe
 
 ### Just Double-Click VersionInjector.exe
