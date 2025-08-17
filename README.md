@@ -1,13 +1,13 @@
 # SafeDiscLoader2
 Allows playing SafeDisc (version 2.0 to the latest 4.9) protected games on modern Windows. 
 
-# Download
+## Download
 [Releases](https://github.com/nckstwrt/SafeDiscLoader2/releases)
 
-# Usage (For SafeDisc version 3 or higher)
-SafeDiscLoader2 is primarily "version.dll". For any game using SafeDisc 3 or higher you can just place version.dll in the same directory as the game's main executable and the game will automatically use version.dll without any further changes required to bypass SafeDisc.
+## Usage (For SafeDisc version 3 or higher)
+SafeDiscLoader2 is primarily just "version.dll". For any game using SafeDisc 3 or higher you can just place version.dll in the same directory as the game's main executable and the game can then be run normally. It will then automatically use version.dll without any further changes required to bypass SafeDisc.
 
-# Usage (For SafeDisc version 2)
+## Usage (For SafeDisc version 2)
 Old games do not automatically load version.dll - so it needs to be injected first using VersionInjector.exe
 
 ### Just Double-Click VersionInjector.exe
@@ -19,7 +19,11 @@ If a SafeDiscLoader.ini file is found in the same directory as SafeDiscLoader.ex
 ### Using it with non-SafeDisc executables
 You can also use VersionInjector.exe to make SafeDisc utilities work on modern Windows. e.g. Safedisc2Cleaner which can unwrap Safedisc executables below version 2.7.
 
-# Credits
+## Configuration
+SafeDiscLoader2 can be configured to bypass additional CD checks and log lots of debug information.  
+Find out more here: [Example Config Files](https://github.com/nckstwrt/SafeDiscLoader2/tree/main/Example%20Config%20Files)
+
+## Credits
 *  Reloaded for their Universal SafeDisc Loader which had great logging to help me reverse engineer what it was doing
 *  SafeDiscCleaner (bOOls eYe, r!sc, etc) nice clean assembly to read for how to patch SafeDisc v2.0 - v2.6
 *  [RibShark](https://twitter.com/RibShark) for his secdrv.sys [SafeDiscShim emulation code](https://github.com/RibShark/SafeDiscShim)
@@ -27,10 +31,10 @@ You can also use VersionInjector.exe to make SafeDisc utilities work on modern W
 *  [MinHooks](https://github.com/TsudaKageyu/minhook) for API Hooking
 *  SafeDisc 2.7 + 2.8 Loader code written by me
 
-# Background
+## Background
 [My initial version](https://github.com/nckstwrt/SafeDiscLoader) used Reloaded's SDLoader.dll to bypass SafeDisc. Sadly this was picked up by many virus checkers as being suspicious purely because reloaded's code is so obfuscated. So this version is a fully reverse engineered version of SDLoader.dll and SafeDiscCleaner to support all versions of SafeDisc 2.0 and higher.
 
-# Tested Games
+## Tested Games
 * Call of Duty (Original): 3.10.20
 * Call of Duty (Patched - 1.4): 3.15.11 
 * Call of Duty - United Offensive: 3.20.22
@@ -60,7 +64,7 @@ You can also use VersionInjector.exe to make SafeDisc utilities work on modern W
 * Kohan: 2.60.52 - Checks the CDROM's Volumename is KOHAN_IS
 * Battlefield 2: 4.00.01
 
- # Notices
+ ## Notices
 > [!IMPORTANT]
 > This is not intended for Piracy but for users to exercise their Fair Use rights for the games they actually own and can no longer play due to draconian and unsupported copy protection
 
