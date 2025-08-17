@@ -1,0 +1,7 @@
+{
+	"exeFile": "BF1942.exe",
+	"CDROMDriveLetter": "E",
+	"fileMappings": [
+		{ "source": "e:\\bfdist.vlu", "target": "NUL" }
+	]
+}

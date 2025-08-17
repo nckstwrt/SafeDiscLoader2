@@ -1,0 +1,9 @@
+{
+	"exefile": "Dflw.exe",
+	"filemappings": [
+	{"source": "d:\\dflsetup\\*", "target": ".\\"},
+	{"source": "d:\\", "target": "NUL"}
+	],
+	"CDROMDriverLetter": "D",
+	"CDROMVolumeName": "DELTAFORCELW"
+}
