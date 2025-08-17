@@ -722,24 +722,24 @@ BOOL WINAPI ReadProcessMemory_Hook(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOI
 {
 	BOOL ret = ReadProcessMemory_Orig(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
 	if (nSize >= 4)
-		logc(FOREGROUND_RED | FOREGROUND_BLUE, "ReadProcessMemory: Process: %08X From: %08X To: %08X Size: %04X Data: %08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, ReverseBytes(*(DWORD*)lpBuffer));
+		logc(FOREGROUND_MAGENTA, "ReadProcessMemory: Process: %08X From: %08X To: %08X Size: %04X Data: %08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, ReverseBytes(*(DWORD*)lpBuffer));
 	else
-		logc(FOREGROUND_RED | FOREGROUND_BLUE, "ReadProcessMemory: Process: %08X From: %08X To: %08X Size: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize);
+		logc(FOREGROUND_MAGENTA, "ReadProcessMemory: Process: %08X From: %08X To: %08X Size: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize);
 	return ret;
 }
 
 BOOL WINAPI WriteProcessMemory_Hook(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten)
 {
 	if (nSize == 2)
-		logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize, *(WORD*)lpBuffer);
+		logc(FOREGROUND_MAGENTA, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize, *(WORD*)lpBuffer);
 	else
 	if (nSize == 4)
-		logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, *(DWORD*)lpBuffer);
+		logc(FOREGROUND_MAGENTA, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, *(DWORD*)lpBuffer);
 	else
 	if (nSize > 4)
-		logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %08X%08X%08X%08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, ReverseBytes(*(DWORD*)(lpBuffer)), ReverseBytes(*((DWORD*)(lpBuffer)+4)), ReverseBytes(*((DWORD*)(lpBuffer)+8)), ReverseBytes(*((DWORD*)(lpBuffer)+12)));
+		logc(FOREGROUND_MAGENTA, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X Data: %08X%08X%08X%08X\n", hProcess, lpBaseAddress, lpBuffer, nSize, ReverseBytes(*(DWORD*)(lpBuffer)), ReverseBytes(*((DWORD*)(lpBuffer)+4)), ReverseBytes(*((DWORD*)(lpBuffer)+8)), ReverseBytes(*((DWORD*)(lpBuffer)+12)));
 	else
-		logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize);
+		logc(FOREGROUND_MAGENTA, "WriteProcessMemory: Process: %08X To: %08X From: %08X Size: %04X\n", hProcess, lpBaseAddress, lpBuffer, nSize);
 	
 	return WriteProcessMemory_Orig(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
 }
@@ -902,7 +902,7 @@ DWORD WINAPI Load(LPVOID lpParam)
 	
 	if (config.GetBool("ejectDebugger"))
 	{
-		logc(FOREGROUND_BLUE | FOREGROUND_GREEN, "Ejecting Debugger Option Selected!\n");
+		logc(FOREGROUND_CYAN, "Ejecting Debugger Option Selected!\n");
 		if (MH_CreateHookApi(L"kernel32", "DebugActiveProcess", &DebugActiveProcess_Hook, reinterpret_cast<LPVOID*>(&DebugActiveProcess_Orig)) != MH_OK)
 		{
 			log("Unable to hook DebugActiveProcess\n");
@@ -1013,15 +1013,15 @@ TableOffset tableOffsets_2_60_52[] = {
 // Run this from a debugger once the CD has done its authentication to get the offsets above
 void GetMagicOffsets()
 {
-	logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "Grabbing Magic Offsets Table!\n");
-	logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "MagicCRCTable = %08X AuthServDataAddr: %08X AuthServDataEndAddr: %08X\n", MagicCRCTable, AuthServDataAddr, AuthServDataEndAddr);
+	logc(FOREGROUND_MAGENTA, "Grabbing Magic Offsets Table!\n");
+	logc(FOREGROUND_MAGENTA, "MagicCRCTable = %08X AuthServDataAddr: %08X AuthServDataEndAddr: %08X\n", MagicCRCTable, AuthServDataAddr, AuthServDataEndAddr);
 	int CRCTableLength = 0x014C;
 	BYTE *MagicCRCTablePtr = (BYTE*)MagicCRCTable;
 	for (int i = 0; i < CRCTableLength; i+=4)
 	{
 		if ((*((DWORD*)MagicCRCTablePtr)) != 0 && (*((DWORD*)MagicCRCTablePtr)) != 0xA5A5A5A5)
 		{
-			logc(FOREGROUND_GREEN | FOREGROUND_BLUE, "Testing: loc: %08X val: %08X\n", MagicCRCTablePtr, (*((DWORD*)MagicCRCTablePtr)));
+			logc(FOREGROUND_MAGENTA, "Testing: loc: %08X val: %08X\n", MagicCRCTablePtr, (*((DWORD*)MagicCRCTablePtr)));
 			DWORD FoundAddr = FindHex(AuthServDataAddr, AuthServDataEndAddr, MagicCRCTablePtr, 4);
 			if (FoundAddr != -1L)
 			{
@@ -1557,7 +1557,7 @@ HMODULE WINAPI LoadLibraryA_27and28_Hook(LPCSTR lpLibFileName)
 			// Check for SecServ.dll
 			if (strstr(lpLibFileName, "~df394b.tmp"))
 			{
-				logc(FOREGROUND_BLUE | FOREGROUND_INTENSITY, "LoadLibraryA_27and28_Hook - SafeDisc Version: %d.%02d.%02d\n", SafeDiscVersion, SafeDiscSubVersion, SafeDiscRevision);
+				logc(FOREGROUND_BLUE, "LoadLibraryA_27and28_Hook - SafeDisc Version: %d.%02d.%02d\n", SafeDiscVersion, SafeDiscSubVersion, SafeDiscRevision);
 				if (SafeDiscVersion == 2 && SafeDiscSubVersion < 90 && SafeDiscSubVersion >= MINIMUM_SAFEDISC_SUBVERSION)
 				{
 					PIMAGE_DOS_HEADER pidh = (PIMAGE_DOS_HEADER)ret;
