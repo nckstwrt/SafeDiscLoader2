@@ -86,6 +86,9 @@ ReadProcessMemory_typedef ReadProcessMemory_Orig;
 typedef BOOL(WINAPI* WriteProcessMemory_typedef)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T * lpNumberOfBytesWritten);
 WriteProcessMemory_typedef WriteProcessMemory_Orig;
 
+typedef DWORD (WINAPI* GetLogicalDrives_typedef)();
+GetLogicalDrives_typedef GetLogicalDrives_Orig;
+
 typedef UINT(WINAPI* GetDriveTypeA_typedef)(LPCSTR lpRootPathName);
 GetDriveTypeA_typedef GetDriveTypeA_Orig;
 
@@ -784,6 +787,22 @@ BOOL WINAPI WriteProcessMemory_Hook(HANDLE hProcess, LPVOID lpBaseAddress, LPCVO
 	return WriteProcessMemory_Orig(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
 }
 
+DWORD WINAPI GetLogicalDrives_Hook()
+{
+	DWORD ret = GetLogicalDrives_Orig();
+	const char* CDROMDriveLetter = config.GetValue("CDROMDriveLetter");
+	if (CDROMDriveLetter)
+	{
+		char driveLetter = toupper(CDROMDriveLetter[0]);
+		if (driveLetter >= 'A' && driveLetter <= 'Z')
+		{
+			ret |= 1 << (driveLetter - 'A');
+			logc(FOREGROUND_GREEN, "GetLogicalDrives_Hook: Adding %c as a valid drive\n", driveLetter);
+		}
+	}
+	return ret;
+}
+
 UINT WINAPI GetDriveTypeA_Hook(LPCSTR lpRootPathName)
 {
 	const char* CDROMDriveLetter = config.GetValue("CDROMDriveLetter");
@@ -800,8 +819,9 @@ BOOL WINAPI GetVolumeInformationA_Hook(LPCSTR lpRootPathName, LPSTR lpVolumeName
 {
 	logc(FOREGROUND_BLUE, "GetVolumeInformationA_Hook: lpRootPathName: %s\n", lpRootPathName ? lpRootPathName : "NULL");
 	BOOL ret = GetVolumeInformationA_Orig(lpRootPathName, lpVolumeNameBuffer, nVolumeNameSize, lpVolumeSerialNumber, lpMaximumComponentLength, lpFileSystemFlags, lpFileSystemNameBuffer, nFileSystemNameSize);
+	NString CDROMDriveLetter = config.GetValue("CDROMDriveLetter");
 	const char *CDROMVolumeName = config.GetValue("CDROMVolumeName");
-	if (CDROMVolumeName && lpVolumeNameBuffer && strlen(CDROMVolumeName) < nVolumeNameSize)
+	if (CDROMVolumeName && CDROMDriveLetter.GetLength() > 0 && lpVolumeNameBuffer && strlen(CDROMVolumeName) < nVolumeNameSize && lpRootPathName[0] == CDROMDriveLetter[0])
 	{
 		strcpy(lpVolumeNameBuffer, CDROMVolumeName);
 		logc(FOREGROUND_BLUE, "GetVolumeInformationA_Hook: Replacing VolumeName with: %s\n", lpVolumeNameBuffer);
@@ -976,6 +996,12 @@ DWORD WINAPI Load(LPVOID lpParam)
 		return false;
 	}
 	
+	if (MH_CreateHookApi(L"kernel32", "GetLogicalDrives", &GetLogicalDrives_Hook, reinterpret_cast<LPVOID*>(&GetLogicalDrives_Orig)) != MH_OK)
+	{
+		log("Unable to hook GetLogicalDrives\n");
+		return false;
+	}
+
 	if (MH_CreateHookApi(L"kernel32", "GetDriveTypeA", &GetDriveTypeA_Hook, reinterpret_cast<LPVOID*>(&GetDriveTypeA_Orig)) != MH_OK)
 	{
 		log("Unable to hook GetDriveTypeA\n");
