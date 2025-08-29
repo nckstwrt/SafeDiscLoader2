@@ -18,6 +18,7 @@ BOOL GetSafeDiscVersionFromBuffer(BYTE *buffer, DWORD dwBufferSize, DWORD *pdwVe
 BOOL GetSafeDiscVersion(const char *szExeFile, DWORD *pdwVersion, DWORD *pdwSubVersion, DWORD *pdwRevision);
 PIMAGE_SECTION_HEADER GetSectionByName(DWORD addr, const char *szName);
 BOOL WriteProtectedDWORD(DWORD Addr, DWORD Value);
+BOOL WriteProtectedBYTE(DWORD Addr, BYTE Value);
 HRESULT PatchIat(HMODULE Module, PSTR ImportedModuleName, PSTR ImportedProcName, PVOID AlternateProc, PVOID *OldProc);
 DWORD FindRealAddress(const char *szDLLName, const char *szProcName, void* pChangeAddressTo = 0, void **OriginalFunction = NULL);
 void EnableDebugPriv();

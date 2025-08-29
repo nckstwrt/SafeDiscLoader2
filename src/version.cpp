@@ -454,6 +454,27 @@ BOOL WINAPI FreeLibrary_Hook(HINSTANCE hModule)
 DWORD DecryptFunc = 0;
 DWORD StealCRCTablePtr = 0;
 DWORD savedFuncCall = 0;
+DWORD HookDecodeTableAddr = 0, RelativeGrabberCall = 0;;
+DWORD FirstCopy = 0, SecondCopy = 0, ThirdCopy = 0;
+int amountToCopy = 0;
+BYTE* ThirdKey = new BYTE[1024];
+
+void __declspec(naked) WINAPI HookCDCheck()
+{
+	__asm
+	{
+		pushad
+	}
+	log("Hello HookCDCheck! %08X", (DWORD)HookCDCheck);
+	memcpy((void*)FirstCopy, ThirdKey, amountToCopy);
+	GetKey();
+	__asm
+	{
+		popad;
+		mov eax, 0x01020050;	// Should always be this value? 
+		ret;
+	}
+}
 
 void WINAPI Grabber()
 {
@@ -512,13 +533,13 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 			DWORD HookDecodeTable = FindHexString(StartAddr, EndAddr, "83EC1C8BCC8965FCFF7508E8????????8B0D????????E8????????8BC8", "HookDecodeTable");
 			if (HookDecodeTable != -1L)
 			{
-				DWORD HookDecodeTableAddr = HookDecodeTable + 0x1E;
+				HookDecodeTableAddr = HookDecodeTable + 0x1E;
 				DecryptFunc = HookDecodeTable - 4;
 				logc(FOREGROUND_GREEN, "HookDecodeTable = %08X (call addr bytes: %08X)\n", HookDecodeTable, HookDecodeTableAddr);
 				logc(FOREGROUND_GREEN, "Grabber function address: %08X\n", (DWORD)&Grabber);
 				logc(FOREGROUND_GREEN, "DecryptFunc = %08X\n", DecryptFunc);
 
-				DWORD RelativeGrabberCall = ((DWORD)&Grabber) - HookDecodeTableAddr - 4;
+				RelativeGrabberCall = ((DWORD)&Grabber) - HookDecodeTableAddr - 4;
 
 				log("RelativeGrabberCall = %08X\n", RelativeGrabberCall);
 		
@@ -641,8 +662,6 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 				DWORD TableClassAddr = *(DWORD*)TableClass;
 				logc(FOREGROUND_GREEN, "TableClassAddr: %08X\n", TableClassAddr);
 
-				DWORD FirstCopy, SecondCopy, ThirdCopy;
-				int amountToCopy;
 				if (TableRawKeysAddr_v40 != -1L)
 				{
 					DWORD TablePtr = *(DWORD*)(TableClassAddr + 0xc);
@@ -654,8 +673,12 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 					amountToCopy = 1024;
 				}
 
-				if (/*TableRawKeysAddr_v45 != -1L && */StealCRCTablePtr != 0)
+				if (HookDecodeTableAddr != -1L)
 				{
+					BYTE HookTableBackup[4];
+					UnProtect_memcpy(HookTableBackup, (void*)HookDecodeTableAddr, 4);
+					UnProtect_memcpy((void*)HookDecodeTableAddr, (void*)&RelativeGrabberCall, 4);
+
 					CallDecrypt(3);
 					logc(FOREGROUND_GREEN, "Called CallDecrypt(3): %08X\n", StealCRCTablePtr);
 					FirstCopy = *(DWORD*)(StealCRCTablePtr + 4);
@@ -665,6 +688,8 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 					CallDecrypt(4);
 					logc(FOREGROUND_GREEN, "Called CallDecrypt(4): %08X\n", StealCRCTablePtr);
 					ThirdCopy = *(DWORD*)(StealCRCTablePtr + 4);
+
+					UnProtect_memcpy((void*)HookDecodeTableAddr, HookTableBackup, 4);
 
 					amountToCopy = 1014;
 				}
@@ -677,10 +702,13 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 				}
 			
 #ifndef USE_SDLOADER	
-				for (int i = 0; i < amountToCopy; i += 4)
+				// Create the important key - but do not write it here. In Football Manager 2006 it is detected if you write it too early
+				// Then it changes the version to 6.2.3, currency to Thai Baht, saving to daily, etc.
+				// Instead hook the CD Check function and write it there instead
+				memcpy(ThirdKey, (void*)(RawKeysTable + Table3Offset), 1024);
+				for (int i = 0; i < 1024; i += 4)
 				{
-					DWORD* writePtr = (DWORD*)(FirstCopy + i);
-					writePtr[0] = (*(DWORD*)(RawKeysTable + Table3Offset + i)) ^ xorKey;
+					*((DWORD*)&ThirdKey[i]) ^= xorKey;
 				}
 
 				memcpy((void*)SecondCopy, (void*)(RawKeysTable + Table3Offset), amountToCopy);
@@ -693,7 +721,11 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 				{
 					logc(FOREGROUND_GREEN, "CdCheckCallAddr_v1: %08X\n", CdCheckCallAddr);
 #ifndef USE_SDLOADER	
-					UnProtect_memcpy((BYTE*)(CdCheckCallAddr + 2), PatchCDPtr, 9);
+					//UnProtect_memcpy((BYTE*)(CdCheckCallAddr + 2), PatchCDPtr, 9);
+					DWORD RelativeCDCheckHook = ((DWORD)&HookCDCheck) - CdCheckCallAddr - (5 + 2);
+					WriteProtectedBYTE((CdCheckCallAddr + 2), 0xE8);
+					WriteProtectedDWORD((CdCheckCallAddr + 3), RelativeCDCheckHook);
+					WriteProtectedDWORD((CdCheckCallAddr + 3 + 4), 0x90909090);
 #endif
 				}
 				else
@@ -701,9 +733,18 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 					CdCheckCallAddr = FindHexString(StartAddr, EndAddr, "EB108B15????????8B4204FFD08B4DF88901", "CdCheckCallAddr_v2");
 					logc(FOREGROUND_GREEN, "CdCheckCallAddr_v2: %08X\n", CdCheckCallAddr);
 				
+					// We hook for CdCheckCallAddr_v2 but we could just write the Third key (Call of Duty World at War is an example)
+					// memcpy((void*)FirstCopy, ThirdKey, amountToCopy);
+
 #ifndef USE_SDLOADER	
 					if (CdCheckCallAddr != -1L)
-						UnProtect_memcpy((BYTE*)(CdCheckCallAddr + 8), PatchCDPtr, 5);
+					{
+						//UnProtect_memcpy((BYTE*)(CdCheckCallAddr + 8), PatchCDPtr, 5);
+						DWORD RelativeCDCheckHook = ((DWORD)&HookCDCheck) - CdCheckCallAddr - (5 + 8);
+						WriteProtectedBYTE((CdCheckCallAddr + 8), 0xE8);
+						WriteProtectedDWORD((CdCheckCallAddr + 9), RelativeCDCheckHook);
+						GetKey(true);
+					}
 					else
 						logc(FOREGROUND_RED, "Can't find CdCheck Call Address!!\n");
 #endif

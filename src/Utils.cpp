@@ -317,6 +317,24 @@ BOOL WriteProtectedDWORD(DWORD Addr, DWORD Value)
 	return bRet;
 }
 
+BOOL WriteProtectedBYTE(DWORD Addr, BYTE Value)
+{
+	BOOL bRet = FALSE;
+	DWORD old;
+	if (VirtualProtectEx(GetCurrentProcess(), (void*)Addr, 1, PAGE_READWRITE, &old))
+	{
+		*((BYTE*)Addr) = Value;
+		if (VirtualProtectEx(GetCurrentProcess(), (void*)Addr, 1, old, &old))
+			bRet = TRUE;
+	}
+
+	if (bRet)
+		log("WriteProtectedBYTE(%08X, %02X)\n", Addr, (DWORD)Value);
+	else
+		log("Failed to WriteProtectedBYTE(%08X, %02X) !!!!\n", Addr, (DWORD)Value);
+	return bRet;
+}
+
 HRESULT PatchIat(HMODULE Module, PSTR ImportedModuleName, PSTR ImportedProcName, PVOID AlternateProc, PVOID* OldProc)
 {
 #define PtrFromRva( base, rva ) ( ( ((DWORD)( PBYTE ) base) ) + ((DWORD)rva) )
