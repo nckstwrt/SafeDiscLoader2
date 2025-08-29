@@ -743,7 +743,6 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 						DWORD RelativeCDCheckHook = ((DWORD)&HookCDCheck) - CdCheckCallAddr - (5 + 8);
 						WriteProtectedBYTE((CdCheckCallAddr + 8), 0xE8);
 						WriteProtectedDWORD((CdCheckCallAddr + 9), RelativeCDCheckHook);
-						GetKey(true);
 					}
 					else
 						logc(FOREGROUND_RED, "Can't find CdCheck Call Address!!\n");
@@ -812,7 +811,6 @@ BOOL WINAPI GetVolumeInformationA_Hook(LPCSTR lpRootPathName, LPSTR lpVolumeName
 			strcpy(lpFileSystemNameBuffer, "CDFS");
 			logc(FOREGROUND_BLUE, "GetVolumeInformationA_Hook: Replacing FileSystemName with: %s\n", lpFileSystemNameBuffer);
 		}
-		GetKey(true);
 	}
 	return ret;
 }
@@ -1226,7 +1224,7 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 			
 			logc(FOREGROUND_GREEN, "Int1DebugTrick = %08X Int1DebugTrickCheck = %08X\n", Int1DebugTrick, Int1DebugTrickCheck);
 
-			GetKey(true);
+			//GetKey(true);
 
 			if (Int1DebugTrick != -1L)
 			{
@@ -1379,7 +1377,7 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 				
 				// LoadLibraryA_Orig("DCEAPIHook.dll");
 
-				GetKey(true);
+				//GetKey(true);
 			}
 		}
 	}

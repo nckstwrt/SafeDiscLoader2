@@ -607,7 +607,7 @@ BYTE* Decrypt25Function() // bOOls eYe code
 	UnProtect_memcpy((void*)DestPtr3, DecryptedKey3, 0x400);
 
 	logc(FOREGROUND_GREEN, "Finished Decrypt25Function\n");
-	GetKey(true);
+	//GetKey(true);
 
 	return MentalMemory;
 }
@@ -647,7 +647,7 @@ BYTE* Decrypt23Function() // bOOls eYe code
 {
 	BYTE* MentalMemory = new BYTE[0x10000];
 
-	GetKey(true);
+	//GetKey(true);
 
 	BYTE *ThirtyBytes = new BYTE[0x30];		// 41B34C
 
@@ -666,7 +666,7 @@ BYTE* Decrypt23Function() // bOOls eYe code
 		
 	LogKey("ThirtyBytes", (DWORD)ThirtyBytes, 0x30);
 
-	GetKey(true);
+	//GetKey(true);
 
 	DWORD KeyPtr = ((DWORD)hInstanceAuthServ) + 0x26039;
 	logc(FOREGROUND_GREEN, "KeyPtr = %08X\n", KeyPtr);
@@ -748,7 +748,7 @@ BYTE* Decrypt23Function() // bOOls eYe code
 	}
 	LogKey("DecryptedKey1 After 5", (DWORD)DecryptedKeys, 0x10);
 
-	GetKey(true);
+	//GetKey(true);
 
 	BYTE* Block41D5D0 = new BYTE[0x200];
 	BYTE* Block41A31C = new BYTE[0x190];
@@ -775,7 +775,7 @@ BYTE* Decrypt23Function() // bOOls eYe code
 
 	logc(FOREGROUND_BLUE, "Block41D5D0 = %08X DestPtr1 = %08X DestPtr2 = %08X DestPtr3 = %08X\n", Block41D5D0, DestPtr1, DestPtr2, DestPtr3);
 
-	GetKey(true);
+	//GetKey(true);
 
 	LogKey("DecryptedKey1", (DWORD)DecryptedKey1);
 	LogKey("DecryptedKey2", (DWORD)DecryptedKey2);
@@ -802,7 +802,7 @@ BYTE* Decrypt23Function() // bOOls eYe code
 
 	logc(FOREGROUND_GREEN, "Decrypt23Function Complete\n");
 
-	GetKey(true);
+	//GetKey(true);
 
 	return MentalMemory;
 }
@@ -886,7 +886,7 @@ void Decrypt21Function() // bOOls eYe code
 
 	void(__stdcall * decrypt)() = (void(__stdcall*)())(dst27Bytes);
 	logc(FOREGROUND_BLUE, "Calling decrypt function at %08X\n", dst27Bytes);
-	GetKey(true);
+	//GetKey(true);
 	decrypt();
 
 	BYTE* Block4105E0 = new BYTE[0x100];
@@ -916,7 +916,7 @@ void Decrypt21Function() // bOOls eYe code
 
 	logc(FOREGROUND_GREEN, "Decrypt21Function Complete\n");
 
-	GetKey(true);
+	//GetKey(true);
 }
 
 void Decrypt20Function() // bOOls eYe code
@@ -931,7 +931,7 @@ void Decrypt20Function() // bOOls eYe code
 
 	void(__stdcall * decrypt)() = (void(__stdcall*)())(ebx);
 	logc(FOREGROUND_BLUE, "Calling decrypt function at %08X\n", ebx);
-	GetKey(true);
+	//GetKey(true);
 	decrypt();
 
 	ebx = ((DWORD)hInstanceAuthServ) + 0x2D660;
@@ -952,5 +952,5 @@ void Decrypt20Function() // bOOls eYe code
 
 	logc(FOREGROUND_GREEN, "Decrypt20Function Complete\n");
 
-	GetKey(true);
+	//GetKey(true);
 }
