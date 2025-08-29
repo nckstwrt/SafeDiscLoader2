@@ -457,7 +457,7 @@ BOOL WINAPI FreeLibrary_Hook(HINSTANCE hModule)
 DWORD DecryptFunc = 0;
 DWORD StealCRCTablePtr = 0;
 DWORD savedFuncCall = 0;
-DWORD HookDecodeTableAddr = 0, RelativeGrabberCall = 0;;
+DWORD HookDecodeTableAddr = -1L, RelativeGrabberCall = 0;;
 DWORD FirstCopy = 0, SecondCopy = 0, ThirdCopy = 0;
 int amountToCopy = 0;
 BYTE* ThirdKey = new BYTE[1024];
