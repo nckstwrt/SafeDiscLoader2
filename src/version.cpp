@@ -847,7 +847,8 @@ DWORD WINAPI Load(LPVOID lpParam)
 	{
 		CreateConsole();
 		HideConsoleCursor();
-		SetLogging(true, config.GetValue("logFile"));
+		NString logFile = config.GetValue("logFile");
+		SetLogging(true, logFile.IsEmpty() ? NULL : (LPCSTR)logFile.Replace("ProcessID", NString::Format("%d", GetCurrentProcessId())));
 		logCreateFile = config.GetBool("logCreateFile");
 	}
 

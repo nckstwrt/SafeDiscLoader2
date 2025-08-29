@@ -111,7 +111,7 @@ std::string Config::GetFileMapping(const char* szSourceFile)
                 NString csTarget(std::get<1>(mapping));
 				NString csFile(szSourceFile);
 
-				csSource.Replace("*", "");
+                csSource = csSource.Replace("*", "");
 				csSource = csSource.ToLower();
 				csFile = csFile.ToLower();
 				if (csFile.StartsWith(csSource))

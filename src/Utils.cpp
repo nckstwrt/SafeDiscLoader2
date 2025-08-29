@@ -10,7 +10,10 @@ bool loggingEnabled = false;
 void SetLogging(bool enable, const char* logFileName)
 {
 	if (logFileName)
+	{
 		log_file = fopen(logFileName, /*"a+t"*/"wt");
+		log("Logging to file: %s\n", logFileName);
+	}
 	loggingEnabled = enable;
 }
 

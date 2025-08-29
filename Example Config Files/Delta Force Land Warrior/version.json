@@ -4,6 +4,6 @@
 	{"source": "d:\\dflsetup\\*", "target": ".\\"},
 	{"source": "d:\\", "target": "NUL"}
 	],
-	"CDROMDriverLetter": "D",
+	"CDROMDriveLetter": "D",
 	"CDROMVolumeName": "DELTAFORCELW"
 }
