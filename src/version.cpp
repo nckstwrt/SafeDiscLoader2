@@ -43,6 +43,7 @@
 // Battlefield 1942: 2.60.52 - checks for the existence of bfdist.vlu on the CDROM
 // Kohan: 2.60.52 - Checks the CDROM's Volumename is KOHAN_IS
 // Battlefield 2: 4.00.01
+// Harry Potter - Quidditch World Cup: 2.90.40
 
 #define NTSTATUS int
 #define STATUS_SUCCESS                   ((NTSTATUS)0x00000000L)    // ntsubauth
@@ -945,7 +946,7 @@ DWORD WINAPI Load(LPVOID lpParam)
 	}
 
 	auto LoadLibrayHook = &LoadLibraryA_Hook;	// For Safedisc 2.9 and above
-	if (SafeDiscVersion == 2)
+	if (SafeDiscVersion == 2 && SafeDiscSubVersion < 90)
 	{ 
 		if (SafeDiscSubVersion == 70 || SafeDiscSubVersion == 80)
 			LoadLibrayHook = &LoadLibraryA_27and28_Hook;
