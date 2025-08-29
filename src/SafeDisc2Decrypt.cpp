@@ -296,6 +296,8 @@ BYTE* Decrypt24Function() // bOOls eYe code
 	UnProtect_memcpy((void*)DestPtr3, DecryptedKey3, 0x400);
 
 	// GetKey();
+	Sleep(10);	// Slight delay required if we aren't logging. Harry Potter and the Philosophers Stone seems to need this because it reloads itself
+	//MessageBox(0, "Decrypted!", "Info", MB_OK);
 
 	return MentalMemory;
 }
@@ -609,6 +611,8 @@ BYTE* Decrypt25Function() // bOOls eYe code
 	logc(FOREGROUND_GREEN, "Finished Decrypt25Function\n");
 	//GetKey(true);
 
+	Sleep(10);
+
 	return MentalMemory;
 }
 
@@ -802,6 +806,8 @@ BYTE* Decrypt23Function() // bOOls eYe code
 
 	logc(FOREGROUND_GREEN, "Decrypt23Function Complete\n");
 
+	Sleep(10);
+
 	//GetKey(true);
 
 	return MentalMemory;
@@ -915,6 +921,7 @@ void Decrypt21Function() // bOOls eYe code
 	//UnProtect_memcpy((void*)(((DWORD)hInstanceAuthServ) + 0xF7FE), JMPPatch, 6);
 
 	logc(FOREGROUND_GREEN, "Decrypt21Function Complete\n");
+	Sleep(10);
 
 	//GetKey(true);
 }
@@ -951,6 +958,7 @@ void Decrypt20Function() // bOOls eYe code
 	UnProtect_memcpy((void*)ebx, FinalPatch, 0x2);
 
 	logc(FOREGROUND_GREEN, "Decrypt20Function Complete\n");
+	Sleep(10);
 
 	//GetKey(true);
 }

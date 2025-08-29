@@ -156,14 +156,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE /*hPrevInst*/, LPSTR cmd_line, int
 {
 	config.LoadConfig("version.json");
 
-	SetLogging(config.GetBool("logging"), config.GetValue("injectorLogFile"));
 	logging = config.GetBool("logging", false);
+
+	SetLogging(logging, config.GetValue("injectorLogFile"));
 
 	if (logging)
 	{
 		AllocConsole();
 		freopen("CONOUT$", "w", stdout);
 	}
+
+	log("VersionInjector Starting...\n");
 
 	int ret = main(__argc, __argv);
 

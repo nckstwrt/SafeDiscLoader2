@@ -6,10 +6,12 @@
 
 FILE* log_file = NULL;
 bool loggingEnabled = false;
+CRITICAL_SECTION log_critical_section;
 
 void SetLogging(bool enable, const char* logFileName)
 {
-	if (logFileName)
+	InitializeCriticalSection(&log_critical_section);
+	if (enable && logFileName)
 	{
 		log_file = fopen(logFileName, /*"a+t"*/"wt");
 		log("Logging to file: %s\n", logFileName);
@@ -19,8 +21,9 @@ void SetLogging(bool enable, const char* logFileName)
 
 void logc(WORD col, const char* fmt, ...)
 {
-	if (!loggingEnabled)
+	if (!loggingEnabled || fmt == NULL)
 		return;
+	EnterCriticalSection(&log_critical_section);
 	va_list va;
 	if (log_file)
 	{
@@ -122,12 +125,14 @@ void logc(WORD col, const char* fmt, ...)
 		CloseHandle(hConsole);
 	}
 	*/
+	LeaveCriticalSection(&log_critical_section);
 }
 
 void log(const char* fmt, ...)
 {
-if (!loggingEnabled)
+	if (!loggingEnabled || fmt == NULL)
 		return;
+	EnterCriticalSection(&log_critical_section);
 	va_list va;
 	if (log_file)
 	{
@@ -142,6 +147,7 @@ if (!loggingEnabled)
 		vfprintf(stdout, fmt, va);
 		va_end(va);
 	}
+	LeaveCriticalSection(&log_critical_section);
 }
 
 void LogKey(const char* keyName, DWORD addr, int keyLength)
