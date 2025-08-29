@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "config.h"
 #include "Utils.h"
-#include "CStringPort.h"
+#include "NString.h"
 
 #define MAX_FIELDS 100
 
@@ -107,17 +107,17 @@ std::string Config::GetFileMapping(const char* szSourceFile)
             if (source[0] != 0 && source[strlen(source)-1] == '*')
             {
 				// Wildcard source! more lengthy so do separately
-				CStringPort csSource(source);
-                CStringPort csTarget(std::get<1>(mapping));
-				CStringPort csFile(szSourceFile);
+				NString csSource(source);
+                NString csTarget(std::get<1>(mapping));
+				NString csFile(szSourceFile);
 
 				csSource.Replace("*", "");
 				csSource = csSource.ToLower();
 				csFile = csFile.ToLower();
 				if (csFile.StartsWith(csSource))
                 {
-                    csTarget.Replace("*", "");
-					csFile.Replace(csSource, csTarget);
+                    csTarget = csTarget.Replace("*", "");
+                    csFile = csFile.Replace(csSource, csTarget);
                     logc(FOREGROUND_BLUE, "File Mapping match %s: %s -> %s\n", std::get<0>(mapping), szSourceFile, (LPCSTR)csFile);
 					return (LPCSTR)csFile;
                 }

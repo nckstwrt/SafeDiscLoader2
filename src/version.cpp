@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include "version.h"
 #include <filesystem>
-#include "CStringPort.h"
+#include "NString.h"
 #include <stdio.h>
 #include <conio.h>
 #include <psapi.h>
@@ -366,7 +366,7 @@ HANDLE WINAPI CreateFileW_Hook(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD 
 	if (lpFileName == NULL)
 		return INVALID_HANDLE_VALUE;
 	
-	CStringPort strFileName(lpFileName);
+	NString strFileName(lpFileName);
 	if (logCreateFile)
 		logc(FOREGROUND_BLUE, "CreateFileW_Hook - Testing %s\n", (LPCSTR)strFileName);
 	
@@ -801,8 +801,8 @@ DWORD WINAPI Load(LPVOID lpParam)
 
 	char szExeFile[MAX_PATH];
 	GetModuleFileNameA(NULL, szExeFile, MAX_PATH);
-	CStringPort csExeFile = szExeFile;
-	CStringPort csCommandLine = GetCommandLine();
+	NString csExeFile = szExeFile;
+	NString csCommandLine = GetCommandLine();
 
 	MH_STATUS status = MH_Initialize();
 
