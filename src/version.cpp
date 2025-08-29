@@ -468,9 +468,8 @@ void __declspec(naked) WINAPI HookCDCheck()
 	{
 		pushad
 	}
-	log("Hello HookCDCheck! %08X", (DWORD)HookCDCheck);
+	log("HookCDCheck Called! %08X\n", (DWORD)HookCDCheck);
 	memcpy((void*)FirstCopy, ThirdKey, amountToCopy);
-	GetKey();
 	__asm
 	{
 		popad;
