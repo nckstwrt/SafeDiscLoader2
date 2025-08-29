@@ -44,6 +44,7 @@
 // Kohan: 2.60.52 - Checks the CDROM's Volumename is KOHAN_IS
 // Battlefield 2: 4.00.01
 // Harry Potter - Quidditch World Cup: 2.90.40
+// Mafia: 2.70.30
 
 #define NTSTATUS int
 #define STATUS_SUCCESS                   ((NTSTATUS)0x00000000L)    // ntsubauth
@@ -95,6 +96,9 @@ GetDriveTypeA_typedef GetDriveTypeA_Orig;
 
 typedef BOOL(WINAPI* GetVolumeInformationA_typedef)(LPCSTR lpRootPathName, LPSTR lpVolumeNameBuffer, DWORD nVolumeNameSize, LPDWORD lpVolumeSerialNumber, LPDWORD lpMaximumComponentLength, LPDWORD lpFileSystemFlags, LPSTR lpFileSystemNameBuffer, DWORD nFileSystemNameSize);
 GetVolumeInformationA_typedef GetVolumeInformationA_Orig;
+
+typedef HANDLE (WINAPI* FindFirstFileA_typedef)(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
+FindFirstFileA_typedef FindFirstFileA_Orig;
 
 HMODULE version_dll;
 
@@ -831,8 +835,21 @@ BOOL WINAPI GetVolumeInformationA_Hook(LPCSTR lpRootPathName, LPSTR lpVolumeName
 			strcpy(lpFileSystemNameBuffer, "CDFS");
 			logc(FOREGROUND_BLUE, "GetVolumeInformationA_Hook: Replacing FileSystemName with: %s\n", lpFileSystemNameBuffer);
 		}
+		ret = TRUE;
 	}
 	return ret;
+}
+
+HANDLE WINAPI FindFirstFileA_Hook(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
+{
+	std::string strFileName;
+	if (lpFileName)
+	{
+		strFileName = config.GetFileMapping(lpFileName);
+		logc(FOREGROUND_BLUE, "FindFirstFileA_Hook: Mapping %s to %s\n", lpFileName, strFileName.c_str());
+		lpFileName = strFileName.c_str();
+	}
+	return FindFirstFileA_Orig(lpFileName, lpFindFileData);
 }
 
 HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName);
@@ -1012,6 +1029,12 @@ DWORD WINAPI Load(LPVOID lpParam)
 	if (MH_CreateHookApi(L"kernel32", "GetVolumeInformationA", &GetVolumeInformationA_Hook, reinterpret_cast<LPVOID*>(&GetVolumeInformationA_Orig)) != MH_OK)
 	{
 		log("Unable to hook GetVolumeInformationA\n");
+		return false;
+	}
+
+	if (MH_CreateHookApi(L"kernel32", "FindFirstFileA", &FindFirstFileA_Hook, reinterpret_cast<LPVOID*>(&FindFirstFileA_Orig)) != MH_OK)
+	{
+		log("Unable to hook FindFirstFileA\n");
 		return false;
 	}
 

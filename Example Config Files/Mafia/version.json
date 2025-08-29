@@ -1,0 +1,10 @@
+{
+	"exeFile": "Game.exe",
+	"CDROMDriveLetter": "L",
+	"CDROMVolumeName": "MAFIA",
+	"fileMappings": [
+		{"source": "L:\\MafiaGame\\a1.dta", "target": "NUL"}
+	],
+	"logging": true,
+	"logfile": "version.log.txt"
+}
