@@ -11,6 +11,7 @@
 #include "winternl.h"
 #include "MemHack.h"
 #include "Config.h"
+#include <ntddscsi.h>
 #include <map>
 
 // http://redump.org/discs/quicksearch/SafeDisc/protection/only
@@ -56,7 +57,9 @@
 #include "Config.h"
 
 bool logCreateFile = false;
+bool logSCSIPassThrough = false;
 Config config;
+HMODULE hOurModule;
 
 typedef NTSTATUS(WINAPI* NtDeviceIoControlFile_typedef)(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG IoControlCode, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength);
 NtDeviceIoControlFile_typedef NtDeviceIoControlFile_Orig;
@@ -99,6 +102,15 @@ GetVolumeInformationA_typedef GetVolumeInformationA_Orig;
 
 typedef HANDLE (WINAPI* FindFirstFileA_typedef)(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
 FindFirstFileA_typedef FindFirstFileA_Orig;
+
+typedef LRESULT(WINAPI* SendMessageA_typedef)(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+SendMessageA_typedef SendMessageA_Orig;
+
+typedef BOOL(WINAPI* GetMessageA_typedef)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
+GetMessageA_typedef GetMessageA_Orig;
+
+typedef UINT(WINAPI* WinExec_typedef)(LPCSTR lpCmdLine, UINT uCmdShow);
+WinExec_typedef WinExec_Orig;
 
 HMODULE version_dll;
 
@@ -239,10 +251,34 @@ NTSTATUS NTAPI NtDeviceIoControlFile_Hook(HANDLE FileHandle, HANDLE Event, PIO_A
 	//	logc(FOREGROUND_RED, "IOCTL 0xCA002813 unhandled (please report!)");
 		IoStatusBlock->Status = STATUS_UNSUCCESSFUL;
 	}
+	else if (logSCSIPassThrough && (IoControlCode == IOCTL_SCSI_PASS_THROUGH_DIRECT || IoControlCode == IOCTL_SCSI_PASS_THROUGH))
+	{
+		//IOCTL_SCSI_PASS_THROUGH_DIRECT
+		if (IoControlCode == IOCTL_SCSI_PASS_THROUGH)
+		{
+			PSCSI_PASS_THROUGH spt = (PSCSI_PASS_THROUGH)InputBuffer;
+
+			if (spt && InputBufferLength >= sizeof(SCSI_PASS_THROUGH))
+			{
+				logc(FOREGROUND_PURPLE, "[SCSI_PASS_THROUGH] CDBLen=%d DataLen=%d\n",
+					   spt->CdbLength, spt->DataTransferLength);
+
+				logc(FOREGROUND_PURPLE, "CDB: \n");
+				for (int i = 0; i < spt->CdbLength; i++)
+					logc(FOREGROUND_PURPLE, "%02X ", spt->Cdb[i]);
+				logc(FOREGROUND_PURPLE, "\n");
+			}
+		}
+
+		NTSTATUS ret = NtDeviceIoControlFile_Orig(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
+		logc(FOREGROUND_PURPLE, "IOCTL %X (Handle: %X) - IOCTL_SCSI_PASS_THROUGH Ret: %X (OutputBufferLength: %d)\n", IoControlCode, FileHandle, ret, OutputBufferLength);
+		LogKey("IOCTL_SCSI_PASS_THROUGH/Direct Out Buf:", (DWORD)OutputBuffer, OutputBufferLength);
+		return ret;
+	}
 	else
 	{
 		// not a secdrv request, pass to original function
-	//	log("Returning Orig IoStatusBlock->Status Handle: %d ControlCode: %d Status: %d\n", (DWORD)FileHandle, IoControlCode, IoStatusBlock->Status);
+		log("Returning Orig IoStatusBlock->Status Handle: %X ControlCode: %X Status: %X\n", (DWORD)FileHandle, IoControlCode, IoStatusBlock->Status);
 		NTSTATUS ret = NtDeviceIoControlFile_Orig(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
 	//	log("NtDeviceIoControlFile_Orig Complete\n");
 		return ret;
@@ -251,8 +287,6 @@ NTSTATUS NTAPI NtDeviceIoControlFile_Hook(HANDLE FileHandle, HANDLE Event, PIO_A
 	// log("Returning Overriden IoStatusBlock->Status Handle: %d ControlCode: %08X Status: %d\n", (DWORD)FileHandle, IoControlCode, IoStatusBlock->Status);
 	return IoStatusBlock->Status;
 }
-
-HMODULE hOurModule;
 
 int InjectSelf(DWORD pid)
 {
@@ -343,7 +377,19 @@ HANDLE WINAPI CreateFileA_Hook(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD d
 
 	HANDLE ret = CheckForSecDrv(lpFileName, CreateFileA_Orig);
 	if (ret == INVALID_HANDLE_VALUE)
+	{
+		const char* CDROMDriveLetter = config.GetValue("CDROMDriveLetter");
+		if (CDROMDriveLetter)
+		{
+			NString drivePath = NString::Format("\\\\.\\%c:", toupper(CDROMDriveLetter[0]));
+			if (drivePath == lpFileName)
+			{
+				logc(FOREGROUND_LIME, "Redirecting CreateFileA of CDROM drive %s to NUL device\n", (LPCSTR)drivePath);
+				lpFileName = "NUL";
+			}
+		}
 		ret = CreateFileA_Orig(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+	}
 
 	if (logCreateFile)
 		log("CreateFileA_Hook Hook - lpFileName: %s ret: %08X\n", lpFileName == NULL ? "!NULL!" : lpFileName, ret);
@@ -852,6 +898,66 @@ HANDLE WINAPI FindFirstFileA_Hook(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFi
 	return FindFirstFileA_Orig(lpFileName, lpFindFileData);
 }
 
+static const DWORD kMsgTimeoutMs = 1000; // 8 seconds; adjust if needed
+static const UINT  kMsgFlags = SMTO_ABORTIFHUNG | SMTO_NORMAL;
+static const UINT  kWakeFlags = QS_ALLINPUT;
+
+// Our replacements call SendMessageTimeout and return a sensible LRESULT.
+LRESULT WINAPI SendMessageA_Hook(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+	DWORD_PTR lres = 0;
+	BOOL ok = SendMessageTimeoutA(hWnd, Msg, wParam, lParam, kMsgFlags, kMsgTimeoutMs, &lres);
+	if (!ok) {
+		// Timed out or failed; return 0 to avoid hang.
+		// (If the app expects something else for specific messages, tweak here.)
+		return 0;
+	}
+	return static_cast<LRESULT>(lres);
+}
+
+BOOL WINAPI GetMessageA_Hook(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
+{
+	DWORD result = MsgWaitForMultipleObjects(
+		0, nullptr, FALSE, kMsgTimeoutMs, kWakeFlags);
+
+	if (result == WAIT_TIMEOUT) {
+		// No message arrived within timeout: return a WM_NULL
+		lpMsg->hwnd = nullptr;
+		lpMsg->message = WM_NULL;
+		lpMsg->wParam = 0;
+		lpMsg->lParam = 0;
+		lpMsg->time = GetTickCount();
+		lpMsg->pt.x = 0;
+		lpMsg->pt.y = 0;
+		return TRUE; // “message received”
+	}
+
+	// Otherwise fall back to real GetMessageA
+	return GetMessageA_Orig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+}
+
+UINT WINAPI WinExec_Hook(LPCSTR lpCmdLine, UINT uCmdShow)
+{
+	logc(FOREGROUND_RED, "WinExec_Hook: %s %d", lpCmdLine, uCmdShow);
+	//return WinExec_Orig(lpCmdLine, uCmdShow);
+	STARTUPINFOA si = { 0 };
+	PROCESS_INFORMATION pi = { 0 };
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = (WORD)uCmdShow;
+	BOOL ok = CreateProcessA_Hook(NULL, (char*)lpCmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+
+	if (ok) {
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		// WinExec returns >31 on success, <=31 on error.
+		return 33; // arbitrary “success” code
+	}
+	else {
+		return 0; // failure
+	}
+}
+
 HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName);
 HMODULE WINAPI LoadLibraryA_27and28_Hook(LPCSTR lpLibFileName);
 void HookOEP(HINSTANCE hModule);
@@ -867,6 +973,7 @@ DWORD WINAPI Load(LPVOID lpParam)
 		NString logFile = config.GetValue("logFile");
 		SetLogging(true, logFile.IsEmpty() ? NULL : (LPCSTR)logFile.Replace("ProcessID", NString::Format("%d", GetCurrentProcessId())));
 		logCreateFile = config.GetBool("logCreateFile");
+		logSCSIPassThrough = config.GetBool("logSCSIPassThrough");
 	}
 
 	load_version();
@@ -971,11 +1078,17 @@ DWORD WINAPI Load(LPVOID lpParam)
 			LoadLibrayHook = &LoadLibraryA_26_Hook;	// Made for 2.6 but works also does lower
 	}
 	
-	if (MH_CreateHookApi(L"kernel32", "LoadLibraryA", LoadLibrayHook, reinterpret_cast<LPVOID*>(&LoadLibraryA_Orig)) != MH_OK)
+	if (config.GetBool("HookLoadLibrary", true))
 	{
-		log("Unable to hook LoadLibraryA\n");
-		return false;
+		log("Hooking LoadLibraryA with %08X\n", (DWORD)LoadLibrayHook);
+		if (MH_CreateHookApi(L"kernel32", "LoadLibraryA", LoadLibrayHook, reinterpret_cast<LPVOID*>(&LoadLibraryA_Orig)) != MH_OK)
+		{
+			log("Unable to hook LoadLibraryA\n");
+			return false;
+		}
 	}
+	else
+		logc(FOREGROUND_CYAN, "Not Hooking LoadLibraryA as per config!!!\n");
 	
 	if (config.GetBool("ejectDebugger"))
 	{
@@ -1035,6 +1148,24 @@ DWORD WINAPI Load(LPVOID lpParam)
 	if (MH_CreateHookApi(L"kernel32", "FindFirstFileA", &FindFirstFileA_Hook, reinterpret_cast<LPVOID*>(&FindFirstFileA_Orig)) != MH_OK)
 	{
 		log("Unable to hook FindFirstFileA\n");
+		return false;
+	}
+
+	if (MH_CreateHookApi(L"user32", "SendMessageA", &SendMessageA_Hook, reinterpret_cast<LPVOID*>(&SendMessageA_Orig)) != MH_OK)
+	{
+		log("Unable to hook SendMessageA\n");
+		return false;
+	}
+
+	if (MH_CreateHookApi(L"user32", "GetMessageA", &GetMessageA_Hook, reinterpret_cast<LPVOID*>(&GetMessageA_Orig)) != MH_OK)
+	{
+		log("Unable to hook GetMessageA\n");
+		return false;
+	}
+
+	if (MH_CreateHookApi(L"kernel32", "WinExec", &WinExec_Hook, reinterpret_cast<LPVOID*>(&WinExec_Orig)) != MH_OK)
+	{
+		log("Unable to hook WinExec\n");
 		return false;
 	}
 
