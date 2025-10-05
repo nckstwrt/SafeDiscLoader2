@@ -1,5 +1,5 @@
 # SafeDiscLoader2
-Allows playing SafeDisc (version 2.0 to the latest 4.9) protected games on modern Windows. 
+Allows playing SafeDisc (version 2.0 to the latest 4.9) protected games on modern Windows without the need of the CD/DVD. 
 
 ## Download
 [Releases](https://github.com/nckstwrt/SafeDiscLoader2/releases)
