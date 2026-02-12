@@ -278,7 +278,8 @@ NTSTATUS NTAPI NtDeviceIoControlFile_Hook(HANDLE FileHandle, HANDLE Event, PIO_A
 	else
 	{
 		// not a secdrv request, pass to original function
-		log("Returning Orig IoStatusBlock->Status Handle: %X ControlCode: %X Status: %X\n", (DWORD)FileHandle, IoControlCode, IoStatusBlock->Status);
+		if (IoControlCode != 0x500016)	// Reduce the noise
+			log("Returning Orig IoStatusBlock->Status Handle: %X ControlCode: %X Status: %X\n", (DWORD)FileHandle, IoControlCode, IoStatusBlock->Status);
 		NTSTATUS ret = NtDeviceIoControlFile_Orig(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
 	//	log("NtDeviceIoControlFile_Orig Complete\n");
 		return ret;
@@ -690,6 +691,7 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 					switch (SafeDiscSubVersion)
 					{
 					case 81:
+					case 85:
 						Table3Offset = 0xAA6;
 						break;
 					default:
@@ -898,7 +900,7 @@ HANDLE WINAPI FindFirstFileA_Hook(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFi
 	return FindFirstFileA_Orig(lpFileName, lpFindFileData);
 }
 
-static const DWORD kMsgTimeoutMs = 1000; // 8 seconds; adjust if needed
+static const DWORD kMsgTimeoutMs = 1000;
 static const UINT  kMsgFlags = SMTO_ABORTIFHUNG | SMTO_NORMAL;
 static const UINT  kWakeFlags = QS_ALLINPUT;
 
@@ -915,10 +917,11 @@ LRESULT WINAPI SendMessageA_Hook(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPar
 	return static_cast<LRESULT>(lres);
 }
 
-BOOL WINAPI GetMessageA_Hook(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
+BOOL WINAPI GetMessageA_Hook_Old(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
-	DWORD result = MsgWaitForMultipleObjects(
-		0, nullptr, FALSE, kMsgTimeoutMs, kWakeFlags);
+	log("GetMessageA_Hook Called\n");
+	DWORD result = MsgWaitForMultipleObjects(0, nullptr, FALSE, kMsgTimeoutMs, kWakeFlags);
+	log("MsgWaitForMultipleObjects returned: %d\n", result);
 
 	if (result == WAIT_TIMEOUT) {
 		// No message arrived within timeout: return a WM_NULL
@@ -933,6 +936,37 @@ BOOL WINAPI GetMessageA_Hook(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wM
 	}
 
 	// Otherwise fall back to real GetMessageA
+	return GetMessageA_Orig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+}
+
+BOOL WINAPI GetMessageA_Hook(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
+{
+	while (true)
+	{
+		DWORD result = MsgWaitForMultipleObjects(
+			0,
+			nullptr,
+			FALSE,
+			kMsgTimeoutMs, // timeout (ms)
+			QS_ALLINPUT
+		);
+
+		if (result == WAIT_TIMEOUT)
+		{
+			// Timeout expired — return FALSE or inject behavior
+			// Option 1: simulate WM_NULL so loop continues safely
+			PostMessageA(hWnd, WM_NULL, 0, 0);
+			continue;
+		}
+
+		if (result == WAIT_OBJECT_0)
+		{
+			// There is a message available
+			break;
+		}
+	}
+
+	// Now call original GetMessage (it will NOT block forever now)
 	return GetMessageA_Orig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
 }
 
@@ -1151,6 +1185,8 @@ DWORD WINAPI Load(LPVOID lpParam)
 		return false;
 	}
 
+/*
+	// Can be useful for installers that freeze - but will leave it disabled for now. Needs more testing.
 	if (MH_CreateHookApi(L"user32", "SendMessageA", &SendMessageA_Hook, reinterpret_cast<LPVOID*>(&SendMessageA_Orig)) != MH_OK)
 	{
 		log("Unable to hook SendMessageA\n");
@@ -1162,13 +1198,13 @@ DWORD WINAPI Load(LPVOID lpParam)
 		log("Unable to hook GetMessageA\n");
 		return false;
 	}
-
+	
 	if (MH_CreateHookApi(L"kernel32", "WinExec", &WinExec_Hook, reinterpret_cast<LPVOID*>(&WinExec_Orig)) != MH_OK)
 	{
 		log("Unable to hook WinExec\n");
 		return false;
 	}
-
+*/
 	if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
 	{
 		log("Enable Hooks Failed!\n");
