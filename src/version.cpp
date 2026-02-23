@@ -481,7 +481,7 @@ enum AuthServState
 };
 AuthServState LoadedAuthServ = AuthServState_NotYetLoaded;
 HINSTANCE hInstanceAuthServ = NULL;
-HINSTANCE hInstanceSecServ = NULL;
+HINSTANCE hInstanceSecServ = NULL;		// df394b.tmp
 
 BOOL WINAPI FreeLibrary_Hook(HINSTANCE hModule)
 {
@@ -501,7 +501,7 @@ BOOL WINAPI FreeLibrary_Hook(HINSTANCE hModule)
 	}
 	if (hInstanceSecServ == hModule)
 	{
-		logc(FOREGROUND_RED, "FreeLibrary_Hook: Unloading SecServ.dll\n");
+		logc(FOREGROUND_RED, "FreeLibrary_Hook: Unloading SecServ.dll (~df394b.tmp)\n");
 	}
 	return FreeLibrary_Orig(hModule);
 }
@@ -1002,6 +1002,15 @@ DWORD WINAPI Load(LPVOID lpParam)
 
 	if (config.GetBool("logging"))
 	{
+		// The below is just to force the console window visible in x64dbg
+		if (!AttachConsole(ATTACH_PARENT_PROCESS))
+			AllocConsole();
+		HWND hCon = GetConsoleWindow();
+		if (hCon)
+		{
+			ShowWindow(hCon, SW_SHOW);
+			SetForegroundWindow(hCon);
+		}
 		CreateConsole();
 		HideConsoleCursor();
 		NString logFile = config.GetValue("logFile");
@@ -1034,9 +1043,7 @@ DWORD WINAPI Load(LPVOID lpParam)
 	{
 		logc(FOREGROUND_BLUE, "SafeDisc Version: %d.%02d.%02d\n", SafeDiscVersion, SafeDiscSubVersion, SafeDiscRevision);
 	}
-
-	//SafeDiscVersion = 2; SafeDiscSubVersion = 5; SafeDiscRevision = 30;
-
+	
 	if (config.GetBool("HookOEP") && csExeFile.ToLower().EndsWith(".exe"))
 		HookOEP(GetModuleHandle(NULL));
 
@@ -1229,7 +1236,6 @@ DWORD WINAPI Load(LPVOID lpParam)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 2.6 Code - Very similiar approach to 2.7 and 2.8 - referenced bOOLs eYe loader from Safedisc 2 Cleaner v1.2.0
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-DWORD TablePtr = 0;
 DWORD AuthServDataAddr;
 DWORD AuthServDataEndAddr;
 DWORD MagicCRCTable;
@@ -1294,6 +1300,15 @@ void GetMagicOffsets()
 int ApplyCount = 0;
 void WINAPI ApplyOffsets()
 {
+	if (SafeDiscVersion == 2 && SafeDiscSubVersion == 60 && SafeDiscRevision == 52 && ApplyCount == 0)
+	{
+		BYTE A5Block[0x200];
+		memset(A5Block, 0xA5, 0x200);
+		UnProtect_memcpy((void*)MagicCRCTable, A5Block, 0x158);
+
+		logc(FOREGROUND_GREEN, "Copied Original A5Table\n");
+	}
+	
 	// We apply to the first table we get to. But leave the next table as all A5s
 	log("Attempting to ApplyOffsets with MagicCRCTable to %08X (Apply Count: %d)\n", MagicCRCTable, ApplyCount);
 	if (*((DWORD*)MagicCRCTable) == 0xA5A5A5A5)
@@ -1363,10 +1378,11 @@ BYTE* Decrypt23Function();
 BYTE* Decrypt24Function();
 BYTE* Decrypt25Function();
 
+//DWORD TableLocation;
+
 HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 {
 	HMODULE ret = LoadLibraryA_Orig(lpLibFileName);
-
 	if (lpLibFileName)
 	{
 		if (strstr(lpLibFileName, "~"))
@@ -1382,16 +1398,16 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 
 			DWORD StartAddr = (DWORD)ret;
 			DWORD EndAddr = StartAddr + pinh->OptionalHeader.SizeOfImage;
-
+			/*
 			DWORD TableLocationPtr = FindHexString(StartAddr, EndAddr, "9090A1????????555683F8FF57", "TableLocationPtr");
 			if (TableLocationPtr != -1L)
 			{
-				DWORD TableLocation = *(DWORD*)(TableLocationPtr + 3);
+				TableLocation = *(DWORD*)(TableLocationPtr + 3);
 				TablePtr = *(DWORD*)(TableLocation);
 				logc(FOREGROUND_GREEN, "TableLocationPtr = %08X\n", TableLocationPtr);
 				logc(FOREGROUND_GREEN, "TableLocation = %08X\n", TableLocation);
 				logc(FOREGROUND_GREEN, "TablePtr = %08X\n", TablePtr);
-			}
+			}*/
 
 			if (SafeDiscVersion == 2 && SafeDiscSubVersion == 60 && SafeDiscRevision == 52)
 			{
@@ -1464,7 +1480,7 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 			}
 		}
 		else
-		if ((strstr(lpLibFileName, "~de") != NULL || strstr(lpLibFileName, "~ef") != NULL) && EndsInTmp(lpLibFileName) && TablePtr != 0 && hInstanceAuthServ == 0)  // AuthServ.dll
+		if ((strstr(lpLibFileName, "~de") != NULL || strstr(lpLibFileName, "~ef") != NULL) && EndsInTmp(lpLibFileName) && hInstanceAuthServ == 0)  // AuthServ.dll
 		{
 			hInstanceAuthServ = ret;
 
@@ -1473,25 +1489,6 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 
 			DWORD StartAddr = (DWORD)ret;
 			DWORD EndAddr = StartAddr + pinh->OptionalHeader.SizeOfImage;
-
-			DWORD TableDestOffset = 0;
-			DWORD A5TableOffset = 0;
-			if (SafeDiscVersion == 2 && SafeDiscSubVersion == 60 && SafeDiscRevision == 52)
-			{
-				TableDestOffset = 0x19B88;
-				A5TableOffset = 0x1A510;
-			}
-			if (SafeDiscVersion == 2 && SafeDiscSubVersion == 40 && SafeDiscRevision == 10)
-			{
-				TableDestOffset = 0x1438;
-			}
-
-			DWORD Table1DestPtr = TablePtr + TableDestOffset;
-			DWORD Table2DestPtr = TablePtr + TableDestOffset + 0x10;
-			DWORD Table3DestPtr = TablePtr + TableDestOffset + 0x20;
-			DWORD A5Table = TablePtr + A5TableOffset;
-
-			logc(FOREGROUND_GREEN, "Table1DestPtr = %08X Table2DestPtr = %08X Table3DestPtr = %08X\n", Table1DestPtr, Table2DestPtr, Table3DestPtr);
 
 			AuthServDataAddr = StartAddr + GetSectionByName(StartAddr, ".data")->VirtualAddress;
 			AuthServDataEndAddr = AuthServDataAddr + GetSectionByName(StartAddr, ".data")->SizeOfRawData;
@@ -1558,30 +1555,50 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 				}
 			}
 
-			//GetKey(true);
-
 			if (SafeDiscVersion == 2 && SafeDiscSubVersion == 60 && SafeDiscRevision == 52)
 			{
-				DWORD Table1Dest = *(DWORD*)Table1DestPtr;
-				DWORD Table2Dest = *(DWORD*)Table2DestPtr;
-				DWORD Table3Dest = *(DWORD*)Table3DestPtr;
+				DWORD Table1Dest, Table2Dest, Table3Dest;
+
+				// Replicate bools eye way to fix 2.60.52 - this might not work as the offsets might not exist at LoadLibrary time
+				DWORD addr1;
+				logc(FOREGROUND_GREEN, "hInstanceSecServ: %08X\n", hInstanceSecServ);
+				addr1 = *(DWORD*)(((DWORD)hInstanceSecServ) + 0xC47B0);
+				logc(FOREGROUND_GREEN, "addr1 = %08x (hInstanceSecServ+0xC47B0) = %08X\n", addr1, (((DWORD)hInstanceSecServ) + 0xC47B0));
+
+				if (addr1 == 0)
+				{
+					hInstanceAuthServ = 0;
+					GetKey(true);
+					return ret;
+				}
+
+				BYTE buf_4060FC[0x30];
+				memcpy(buf_4060FC, (void*)addr1, 0x10);
+				DWORD addr2 = *((DWORD*)&buf_4060FC[0xC]);
+				logc(FOREGROUND_GREEN, "addr2 = %08x\n", addr2);
+				addr2 += 0x20;
+				memcpy(buf_4060FC, (void*)addr2, 0x30);
+				Table1Dest = *(DWORD*)&buf_4060FC[4];
+				Table2Dest = *(DWORD*)&buf_4060FC[4+0x10];
+				Table3Dest = *(DWORD*)&buf_4060FC[4+0x20];
+
 				logc(FOREGROUND_GREEN, "Table1Dest = %08X Table2Dest = %08X Table3Dest = %08X\n", Table1Dest, Table2Dest, Table3Dest);
-				logc(FOREGROUND_GREEN, "A5Table = %08X\n", A5Table);
 				logc(FOREGROUND_GREEN, "Our GetMagicOffsets Func = %08X (call this from a debugger after a good cd check if you want the offsets)\n", GetMagicOffsets);
 
-
-				BYTE A5Block[0x200];
-				memset(A5Block, 0xA5, 0x200);
-				memcpy((void*)A5Table, A5Block, 0x158);
-
-				memcpy((void*)Table1Dest, (void*)Table3SrcPtr, 0x400);
+				UnProtect_memcpy((void*)Table1Dest, (void*)Table3SrcPtr, 0x400);
+				UnProtectAddress((BYTE*)Table2Dest, 0x400);
 
 				for (int i = 0; i < 0x400/4; i++)
 				{
 					*(((DWORD*)(Table2Dest+(i*4)))) = (*((DWORD*)(Table3SrcPtr+(i*4)))) ^ xor_key;
 				}
 
-				memcpy((void*)Table3Dest, (void*)Table3SrcPtr, 0x400);
+				logc(FOREGROUND_GREEN, "Xor'd the key\n");
+				logc(FOREGROUND_GREEN, "memcpy to Table3Dest: %08X from Table3SrcPtr %08X\n", (DWORD)Table3Dest, (DWORD)Table3SrcPtr);
+
+				UnProtect_memcpy((void*)Table3Dest, (void*)Table3SrcPtr, 0x400);
+
+				logc(FOREGROUND_GREEN, "Memcpy'd to Table3\n");
 			
 				if (CDCheckAddr != -1L)
 				{
@@ -1590,11 +1607,6 @@ HMODULE WINAPI LoadLibraryA_26_Hook(LPCSTR lpLibFileName)
 					BYTE PatchCDPtr[5] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
 					UnProtect_memcpy((BYTE*)CDCheckAddrToHook, PatchCDPtr, 5);
 				}
-
-				
-				// LoadLibraryA_Orig("DCEAPIHook.dll");
-
-				//GetKey(true);
 			}
 		}
 	}
