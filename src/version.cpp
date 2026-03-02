@@ -1008,7 +1008,7 @@ DWORD WINAPI Load(LPVOID lpParam)
 		HWND hCon = GetConsoleWindow();
 		if (hCon)
 		{
-			ShowWindow(hCon, SW_SHOW);
+			ShowWindow(hCon, SW_RESTORE);
 			SetForegroundWindow(hCon);
 		}
 		CreateConsole();
