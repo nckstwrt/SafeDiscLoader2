@@ -503,7 +503,16 @@ BOOL WINAPI FreeLibrary_Hook(HINSTANCE hModule)
 	{
 		logc(FOREGROUND_RED, "FreeLibrary_Hook: Unloading SecServ.dll (~df394b.tmp)\n");
 	}
-	return FreeLibrary_Orig(hModule);
+	const BOOL released = FreeLibrary_Orig(hModule);
+	if (released && hModule == hInstanceSecServ)
+	{
+		HMODULE loaded = NULL;
+		if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+			GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			reinterpret_cast<LPCSTR>(hModule), &loaded) || loaded != hModule)
+			hInstanceSecServ = NULL;
+	}
+	return released;
 }
 
 DWORD DecryptFunc = 0;
@@ -556,13 +565,21 @@ HMODULE WINAPI LoadLibraryA_Hook(LPCSTR lpLibFileName)
 	static DWORD TableClass = 0;
 
 	HMODULE ret = LoadLibraryA_Orig(lpLibFileName);
+	if (!ret || !lpLibFileName)
+		return ret;
 	
 	if (strstr(lpLibFileName, "~"))
 		log("LoadLibraryA_Hook: %s %08X\n", lpLibFileName == NULL ? "NULL" : lpLibFileName, ret);
 
-	if (strstr(lpLibFileName, "df394b.tmp") != NULL && bLoadeddf394b == FALSE)	// SecServ.dll
+	if (strstr(lpLibFileName, "df394b.tmp") != NULL && hInstanceSecServ != ret)	// SecServ.dll
 	{
-		bLoadeddf394b = TRUE;
+		// A protected DLL can load its own copy after the executable starts.
+		// These addresses belong to that copy and must be resolved again.
+		TableClass = 0;
+		savedFuncCall = 0;
+		StealCRCTablePtr = 0;
+		LoadedAuthServ = AuthServState_NotYetLoaded;
+		hInstanceAuthServ = NULL;
 		hInstanceSecServ = ret;
 		log("LoadLibraryA_Hook: %s %08X\n", lpLibFileName == NULL ? "NULL" : lpLibFileName, ret);
 		PIMAGE_DOS_HEADER pidh = (PIMAGE_DOS_HEADER)ret;
@@ -932,7 +949,7 @@ BOOL WINAPI GetMessageA_Hook_Old(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UIN
 		lpMsg->time = GetTickCount();
 		lpMsg->pt.x = 0;
 		lpMsg->pt.y = 0;
-		return TRUE; // “message received”
+		return TRUE; // Â“message receivedÂ”
 	}
 
 	// Otherwise fall back to real GetMessageA
@@ -953,7 +970,7 @@ BOOL WINAPI GetMessageA_Hook(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wM
 
 		if (result == WAIT_TIMEOUT)
 		{
-			// Timeout expired — return FALSE or inject behavior
+			// Timeout expired Â— return FALSE or inject behavior
 			// Option 1: simulate WM_NULL so loop continues safely
 			PostMessageA(hWnd, WM_NULL, 0, 0);
 			continue;
@@ -985,7 +1002,7 @@ UINT WINAPI WinExec_Hook(LPCSTR lpCmdLine, UINT uCmdShow)
 		CloseHandle(pi.hThread);
 		CloseHandle(pi.hProcess);
 		// WinExec returns >31 on success, <=31 on error.
-		return 33; // arbitrary “success” code
+		return 33; // arbitrary Â“successÂ” code
 	}
 	else {
 		return 0; // failure
